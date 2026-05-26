@@ -17,9 +17,13 @@ claude plugin install @ano-chat/skills
 
 ## Use It
 
-Install the Ano CLI:
+Install the Ano CLI. Two paths — pick whichever fits your setup:
 
 ```bash
+# Native binary (recommended — ~20ms cold start, no Node required)
+curl -fsSL https://raw.githubusercontent.com/ano-chat/ano-cli/main/scripts/install.sh | bash
+
+# npm (works everywhere Node 20+ runs, including Windows)
 npm install -g @ano-chat/cli
 ```
 

@@ -1,7 +1,7 @@
 {
   "name": "ano-skills",
-  "version": "0.17.0",
-  "description": "Claude Code skills for working with Ano — handles structured payloads from the Ano desktop app's Send to Shell gesture",
+  "version": "0.18.0",
+  "description": "Claude Code skills for Ano — drive the `ano` CLI to read messages, send replies, search workspace context, and parse `<ano_payload>` blocks from the Ano desktop app's Send-to-Shell gesture",
   "author": {
     "name": "Ano",
     "email": "hello@ano.dev"

@@ -318,7 +318,9 @@ ano commands --json                 # Full command catalog
 | Full diagnostics                                              | `ano doctor --agent`                                                                                                               |
 | Smoke test (timed sweep of canonical ops)                     | `ano dev smoke --agent` (CLI v2.14.0+)                                                                                             |
 | Smoke test, read-only                                         | `ano dev smoke --no-write --agent`                                                                                                 |
-| Daemon status (warm process for fast CLI calls)               | `ano daemon status` (CLI v2.13.0+)                                                                                                 |
+| Daemon status (warm process + cache stats + breaker state)    | `ano daemon status` (CLI v2.13.0+; cache + breaker fields added in v2.20.0+)                                                       |
+| Daemon start (or clear circuit breaker)                       | `ano daemon start` (CLI v2.20.0+ clears the breaker when invoked)                                                                  |
+| Debug-log cache hits/misses to stderr                         | `ANO_DEBUG_CACHE=1 ano <cmd>` (CLI v2.21.0+)                                                                                       |
 | Command catalog                                               | `ano commands --json`                                                                                                              |
 | Setup Claude                                                  | `ano setup claude`                                                                                                                 |
 | Setup OpenClaw                                                | `ano setup openclaw`                                                                                                               |
@@ -340,15 +342,29 @@ Before invoking the new flags, run `ano --version`. The output is a single
 semver line (e.g. `2.2.0`). Compare:
 
 - Major < 2 OR (major == 2 AND minor < 2) → CLI is too old. Tell the user
-  to upgrade: `npm install -g @ano-chat/cli@latest --force`. Don't try to
-  invoke the new flags — they don't exist and the CLI errors with
-  "unknown option."
+  to upgrade. Two paths: `npm install -g @ano-chat/cli@latest --force`
+  (works everywhere Node 20+ runs), OR the faster native binary path
+  (CLI v2.21.0+):
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/ano-chat/ano-cli/main/scripts/install.sh | bash
+  ```
+  Don't try to invoke the new flags before upgrading — they don't
+  exist and the CLI errors with "unknown option."
 - Major == 2 AND minor >= 2 → triggered auth is supported.
 - Major >= 3 → assume forward-compatibility unless you've seen a breaking
   change in the changelog.
 
 If the CLI binary is missing entirely (`ano: command not found`), tell
-the user to install it first: `npm install -g @ano-chat/cli`.
+the user to install it first. Same two install paths as above —
+recommend the native script for speed (no Node required, ~20 ms
+cold start vs ~150 ms via Node):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ano-chat/ano-cli/main/scripts/install.sh | bash
+```
+
+The npm path (`npm install -g @ano-chat/cli`) is the everywhere-
+compatible alternative.
 
 ### Pick the right --endpoint
 
@@ -797,6 +813,59 @@ JSON envelope on `--agent`/`--json`: `{ ok, steps[], total_ms, daemon, endpoint 
 Exit code is 0 on all-green, non-zero if any step failed. Pair with
 `ano doctor --agent` if a step fails — doctor explains _why_, smoke
 just measures _whether_.
+
+### Daemon, cache, and circuit breaker (v2.20.0+)
+
+The CLI ships a background daemon (`ano daemon`) that holds the Node
+process warm + a TLS connection pool + a small in-process response
+cache. Sequential CLI calls in the same shell session reuse all of
+that and land in tens of milliseconds. There's a circuit breaker
+that auto-disables a misbehaving daemon for 10 minutes so a wedged
+daemon can never silently slow down every call.
+
+**The model you should reason about:**
+
+- First call: pays cold-start (~150-500 ms direct, or daemon-mediated
+  if the daemon was pre-warmed by an earlier `ano daemon start`).
+- Subsequent calls in the same workspace: cache hits land at ~40 ms.
+- Cacheable reads: `list_workspaces`, `list_channels`, `list_users`,
+  `list_tables`, `get_table` with 5 s TTL. Any write to the same
+  origin invalidates the origin's cache.
+- The breaker trips when the daemon doesn't reply within 10 s
+  (truly wedged). It DOESN'T trip on normal-slow cloud calls — that
+  was a v2.20.0 bug fixed in v2.21.3.
+
+**`ano daemon status` shows the live state** (cache + breaker fields
+present in CLI v2.20.0+):
+
+```
+status:  running
+pid:     86737
+socket:  /var/folders/.../ano-daemon-502.sock
+uptime:  3m 12s
+cli:     v2.21.3
+proto:   v1
+cache:   1 entries across 1 origin; 9 hits / 1 misses (90%); 0 invalidations
+```
+
+If you see `breaker: TRIPPED`, the daemon path is bypassed for the
+remaining cooldown window. Calls fall back to direct execution
+(~150 ms cold Node). To re-engage the daemon immediately, run
+`ano daemon start` — it clears the breaker AND spawns a fresh
+daemon.
+
+**Debug cache behavior with `ANO_DEBUG_CACHE=1`** (CLI v2.21.0+):
+
+```bash
+ANO_DEBUG_CACHE=1 ano channels list
+# stderr emits one line per fetch:
+#   [ano:cache] MISS /mcp/list_channels (460B) +120.89ms — cached
+#   [ano:cache] HIT  /mcp/list_channels (460B) +0.03ms
+#   [ano:cache] WRITE /mcp/send_message +43.21ms — origin cache invalidated
+```
+
+Use this when timing feels off to confirm the cache is doing what
+you think.
 
 ### Archive an old channel
 
