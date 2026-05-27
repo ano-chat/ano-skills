@@ -1,7 +1,7 @@
 {
   "name": "ano-skills",
-  "version": "0.18.0",
-  "description": "Claude Code skills for Ano — drive the `ano` CLI to read messages, send replies, search workspace context, and parse `<ano_payload>` blocks from the Ano desktop app's Send-to-Shell gesture",
+  "version": "0.19.0",
+  "description": "Claude Code skills for Ano — drive the `ano` CLI across 8 focused domain skills (core auth/config, messages, channels, coworkers, notifications, tables, automations, realtime bridge) plus an ano-payloads skill for parsing `<ano_payload>` blocks. Each skill is self-contained and loads only when its triggers match.",
   "author": {
     "name": "Ano",
     "email": "hello@ano.dev"

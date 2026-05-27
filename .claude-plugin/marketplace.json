@@ -5,15 +5,15 @@
     "name": "Ano"
   },
   "metadata": {
-    "description": "Claude Code skills for the Ano CLI and desktop app",
-    "version": "0.18.0"
+    "description": "Claude Code skills for the Ano CLI and desktop app — now split into 9 focused domain skills for faster trigger-scoped loading",
+    "version": "0.19.0"
   },
   "plugins": [
     {
       "name": "ano-skills",
       "source": "./",
-      "description": "Skills for interacting with Ano — team communication for humans and agents",
-      "version": "0.18.0",
+      "description": "Skills for interacting with Ano — 9 self-contained skills covering core/messages/channels/coworkers/notifications/tables/automations/realtime/payloads. Each loads only when its triggers match, so a 'send a message' invocation no longer pulls the full CLI surface into context.",
+      "version": "0.19.0",
       "author": {
         "name": "Ano"
       },
