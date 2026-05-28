@@ -1,5 +1,5 @@
 ---
-allowed-tools: Bash(ano channels list:*), Bash(ano messages read:*), Bash(jq:*)
+allowed-tools: Bash(ano web-url:*), Bash(ano channels list:*), Bash(ano messages read:*), Bash(jq:*)
 description: Triage unread Ano channels — pre-runs the unread+read sequence and asks Claude to summarise each
 ---
 
@@ -10,13 +10,15 @@ description: Triage unread Ano channels — pre-runs the unread+read sequence an
 ## Recent history per unread channel (up to 100 messages each)
 
 The bash below tags every message with a pre-built `JUMP:` URL line BEFORE
-its content. URLs use the `ano://` protocol scheme so they route in-app
-regardless of whether the user is on dev:local, staging, or prod (the
-Ano desktop app registers itself as the system handler for `ano://`).
+its content. The base comes from `ano web-url` (the deployed web app for
+the current environment — `app.ano.dev`, `app-staging.ano.dev`, or
+`localhost:1420` in dev), so the link is correct everywhere. It's a normal
+web URL: clicked inside the Ano in-app shell it opens the channel in-app;
+clicked in any other terminal it opens the web app in the browser.
 To deep-link to a message, take its `JUMP:` URL and wrap it in a
 Markdown link as `[Jump to message](<that-url>)`.
 
-!`ids=$(ano channels list --unread --agent | jq -r '.id'); if [ -z "$ids" ]; then echo "(no unread channels)"; else for ch in $ids; do echo "=== CHANNEL $ch ==="; ano messages read --channel "$ch" --limit 100 --agent | jq -r --arg ch "$ch" '"JUMP: ano://channel/\($ch)?message=\(.id)\n" + (. | tostring)'; done; fi`
+!`BASE=$(ano web-url 2>/dev/null || echo "http://localhost:1420"); ids=$(ano channels list --unread --agent | jq -r '.id'); if [ -z "$ids" ]; then echo "(no unread channels)"; else for ch in $ids; do echo "=== CHANNEL $ch ==="; ano messages read --channel "$ch" --limit 100 --agent | jq -r --arg ch "$ch" --arg base "$BASE" '"JUMP: \($base)/?channel=\($ch)&message=\(.id)\n" + (. | tostring)'; done; fi`
 
 ## Your task
 
@@ -34,10 +36,10 @@ Otherwise, summarise each unread channel. For each:
   wins; otherwise the most recent. End the channel's summary with a
   Markdown deep-link to it:
 
-  `[Jump to message](ano://channel/<channel_id>?message=<message_id>)`
+  `[Jump to message](<web-url>/?channel=<channel_id>&message=<message_id>)`
 
   The `JUMP:` line preceding each message in the second section has the
-  URL pre-built — just wrap it in Markdown.
+  full URL pre-built (base from `ano web-url`) — just wrap it in Markdown.
 
 - **Multiple channels**: lead with the freshest, mention the others.
   Under three channels → summarise each; more → summarise the top one

@@ -116,9 +116,11 @@ at all):
 # Single bash one-liner — same recipe `/unread` bakes in. The `JUMP:`
 # prefix line before each message gives you the pre-built deep-link URL;
 # wrap it in Markdown `[Jump to message](...)` when you emit the summary.
-# `ano://` is the registered system handler for the Ano desktop app, so
-# the same URLs route in-app whether the user is on dev:local, staging,
-# or prod.
+# The base comes from `ano web-url` — the deployed web app for the current
+# environment (app.ano.dev / app-staging.ano.dev / localhost:1420 in dev).
+# It's a normal web URL: clicked in the Ano in-app shell it opens the
+# channel in-app; clicked in any other terminal it opens the web app.
+BASE=$(ano web-url 2>/dev/null || echo "http://localhost:1420")
 ids=$(ano channels list --unread --agent | jq -r '.id')
 if [ -z "$ids" ]; then
   echo "(no unread channels)"
@@ -126,7 +128,7 @@ else
   for ch in $ids; do
     echo "=== CHANNEL $ch ==="
     ano messages read --channel "$ch" --limit 100 --agent | \
-      jq -r --arg ch "$ch" '"JUMP: ano://channel/\($ch)?message=\(.id)\n" + (. | tostring)'
+      jq -r --arg ch "$ch" --arg base "$BASE" '"JUMP: \($base)/?channel=\($ch)&message=\(.id)\n" + (. | tostring)'
   done
 fi
 ```
@@ -146,7 +148,8 @@ If the unread list is empty, say "you're caught up" and stop.
   and list the rest as headlines.
 - **MANDATORY** — every channel summary ends with a Markdown deep-link
   to the most decision-shaped message in that channel:
-  `[Jump to message](ano://channel/<channel_id>?message=<message_id>)`.
+  `[Jump to message](<web-url>/?channel=<channel_id>&message=<message_id>)`
+  (base from `ano web-url`; the `JUMP:` line has the full URL pre-built).
   Pick by content: a wrap-up message ("wrapping up", "to recap",
   "summary of options", scenario lists, embedded prototype URLs,
   explicit asks for sign-off) wins; otherwise the most recent. Do not
