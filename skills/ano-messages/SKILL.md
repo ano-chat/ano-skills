@@ -174,8 +174,8 @@ doesn't matter; the server stores the bytes and stamps a fresh
 #    (scenarios-v2.html, scenarios-scenario-c.html, etc.). Reuse the
 #    original's structure; only your additions / changes differ.
 
-# 3. `ano messages send` — IMPORTANT: put the content BEFORE `--file` so
-#    Commander doesn't gobble it as a variadic file path.
+# 3. `ano messages send` — content and `--file` are order-independent on
+#    recent CLIs; either order works.
 ano messages send \
   "Scenario C is ready — progressive trust ladder. See the new tab." \
   --channel-name product-demo \
@@ -189,9 +189,9 @@ Rules:
 - Always `--file <path>` — never an inline URL in the body. The inline
   URL is text; `--file` produces an attachment row that renders as a
   clickable chip.
-- Content argument BEFORE `--file`. Otherwise the variadic `--file` eats
-  the content and the CLI errors with `missing required argument
-'content'`.
+- Content and `--file` are order-independent on recent CLIs. (If you hit
+  `missing required argument 'content'`, you're on an older CLI that
+  treated `--file` as variadic — put the content before `--file`.)
 
 ## Performance (CLI v2.25.0+)
 
