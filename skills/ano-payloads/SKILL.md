@@ -44,6 +44,41 @@ A chat message from a channel or DM.
 - If `selection` is present, focus on that text but use `full` for context
 - `thread_id` (optional) — present if the message is part of a thread
 
+A message may contain an `<attachments>` block — see below.
+
+### attachment (inside a message)
+
+Files attached to a message arrive in the payload as a nested
+`<attachments>` block containing one or more `<attachment ... />`
+self-closing elements:
+
+```xml
+<message id="msg_789" ...>
+  <full>Take a look at this prototype.</full>
+  <attachments>
+    <attachment url="https://cdn.ano.dev/attachments/usr_x/abc/scenarios.html"
+                file_category="document"
+                filename="scenarios.html" />
+  </attachments>
+</message>
+```
+
+- `url` — **the direct URL to the file**. Use this to fetch the
+  attachment (`WebFetch`, `curl`, etc.). Do NOT call any CLI to look
+  up the file path or storage location — the URL in the payload is
+  the canonical fetch target. Trust it.
+- `file_category` — `"document"`, `"image"`, `"video"`, `"audio"`, or
+  `"other"`. Hints whether to read the body, render inline, or just
+  link it.
+- `filename` (optional) — original filename.
+- `width`, `height` (optional, images) — display dimensions.
+- `alt` (optional, images) — accessibility description.
+
+When the user shares a message with attachments via Send-to-Shell,
+the `url` is ALREADY in the payload — do not search for the file,
+do not list messages to find it, do not query Zero. `WebFetch` the
+URL directly.
+
 ### thread
 
 A reference to an entire thread. Serialized as `<thread ... />` (self-closing, no children).

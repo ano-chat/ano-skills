@@ -149,6 +149,50 @@ ano dm send "report attached" --to "Alice" --file ./report.pdf --agent
 - Result includes `attachment_ids: [...]`.
 - If the file is already at a known path, just `--file` directly — no copy-to-shared step needed.
 
+### Extending a shared prototype — write a NEW file, attach it
+
+When the user shares a file in chat (e.g. an `<ano_payload>` Send-to-Shell
+block with an `<attachment url="...">` element) and asks you to extend it
+— add a variant, write a new scenario, build on top — you MUST:
+
+1. Write a NEW file (variant filename) — never overwrite the original.
+   The shared file is the starting state; mutating it in place destroys
+   the "before" of any future review.
+2. Attach the new file via `--file` so the chat renders a clickable
+   attachment chip (not an inline URL in the message body).
+
+Where to write the variant: anywhere on disk you control (`/tmp/` is
+fine). `--file` uploads through the standard pipeline — the source path
+doesn't matter; the server stores the bytes and stamps a fresh
+`storage_url` that the chat renders.
+
+```bash
+# 1. WebFetch the URL from the payload's <attachment url=...> — already
+#    authoritative; don't search for the file.
+
+# 2. Write the variant locally with a clearly-variant filename
+#    (scenarios-v2.html, scenarios-scenario-c.html, etc.). Reuse the
+#    original's structure; only your additions / changes differ.
+
+# 3. `ano messages send` — IMPORTANT: put the content BEFORE `--file` so
+#    Commander doesn't gobble it as a variadic file path.
+ano messages send \
+  "Scenario C is ready — progressive trust ladder. See the new tab." \
+  --channel-name product-demo \
+  --file "/tmp/scenarios-v2.html" \
+  --agent
+```
+
+Rules:
+
+- New file each time. Never overwrite the original.
+- Always `--file <path>` — never an inline URL in the body. The inline
+  URL is text; `--file` produces an attachment row that renders as a
+  clickable chip.
+- Content argument BEFORE `--file`. Otherwise the variadic `--file` eats
+  the content and the CLI errors with `missing required argument
+'content'`.
+
 ## Performance (CLI v2.25.0+)
 
 The basic-text `messages send` path — `--channel <id>` with no `--thread`, `--mention`, `--file`, or `--channel-name` — now flows through an optimistic Zero mutator (~310 ms vs. ~700 ms REST). Server still runs the authoritative mutator (membership check, fan-out, notifications, embedding queue) in parallel. Any path that needs server-side resolution (channel-name lookup, attachment upload, thread parent denormalization, mention @handle → user_id) stays on REST. No caller-visible difference beyond latency.
