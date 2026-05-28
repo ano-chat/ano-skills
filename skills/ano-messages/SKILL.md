@@ -193,6 +193,10 @@ Rules:
   the content and the CLI errors with `missing required argument
 'content'`.
 
+## Performance (CLI v2.25.0+)
+
+The basic-text `messages send` path — `--channel <id>` with no `--thread`, `--mention`, `--file`, or `--channel-name` — now flows through an optimistic Zero mutator (~310 ms vs. ~700 ms REST). Server still runs the authoritative mutator (membership check, fan-out, notifications, embedding queue) in parallel. Any path that needs server-side resolution (channel-name lookup, attachment upload, thread parent denormalization, mention @handle → user_id) stays on REST. No caller-visible difference beyond latency.
+
 ## Edge cases
 
 - Channel by name with `--channel-name <name>` is 1 round trip and atomic at the server. If the channel doesn't exist, returns exit 2 (NOT_FOUND); do NOT fall back to creating it silently.

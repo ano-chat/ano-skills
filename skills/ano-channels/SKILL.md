@@ -56,8 +56,8 @@ Listing or inspecting?
 
 Managing a channel?
 ├── Archive (irreversible-ish)    → ano channels archive <channel-id> --agent
-├── Add a teammate                → ano channels member-add <channel-id> --user <user-id> --agent
-├── Remove a teammate             → ano channels member-remove <channel-id> --user <user-id> --agent
+├── Add a teammate                → ano channels member-add <channel-id> <user-id> --agent
+├── Remove a teammate             → ano channels member-remove <channel-id> <user-id> --agent
 └── Need the user-id?             → ano users list --agent  (by display name or email)
 
 Managing workspace membership?
@@ -82,8 +82,8 @@ Inviting someone NOT yet in the workspace?
 | List workspaces          | `ano workspaces list --agent`                                            |
 | Set active workspace     | `ano workspaces use <workspace-id>`                                      |
 | Archive channel          | `ano channels archive <channel-id> --agent`                              |
-| Add channel member       | `ano channels member-add <channel-id> --user <user-id> --agent`          |
-| Remove channel member    | `ano channels member-remove <channel-id> --user <user-id> --agent`       |
+| Add channel member       | `ano channels member-add <channel-id> <user-id> --agent`                 |
+| Remove channel member    | `ano channels member-remove <channel-id> <user-id> --agent`              |
 | Add workspace member     | `ano workspaces member-add <workspace-id> <user-id> --agent`             |
 | Remove workspace member  | `ano workspaces member-remove <workspace-id> <user-id> --agent`          |
 | Invite teammate by email | `ano invite <email> [--expires-hours N]`                                 |
@@ -170,7 +170,7 @@ ano channels archive "$CHANNEL_ID" --agent
 ```bash
 users=$(ano users list --agent)
 # Find USER_ID by display name or email
-ano channels member-add "$CHANNEL_ID" --user "$USER_ID" --agent
+ano channels member-add "$CHANNEL_ID" "$USER_ID" --agent
 # Idempotent: already-a-member returns 200, doesn't error.
 # Rejects: archived channel (400), DM/space target (400), non-workspace member (404).
 ```
@@ -183,11 +183,15 @@ ano invite alice@example.com --expires-hours 72
 # Re-running with the same email revokes the previous token first.
 ```
 
+## Performance (CLI v2.25.0+)
+
+`ano channels archive` and `ano channels member-remove` now flow through optimistic Zero mutators when the daemon's Zero replica is connected — the local replica reflects the change immediately and the server's authoritative mutator confirms in parallel (~145 ms archive, ~346 ms member-remove vs. ~700 ms REST). Auth failures still throw synchronously. Falls back to REST automatically if Zero is unavailable; behavior is identical from the caller's perspective.
+
 ## Edge cases
 
 - **Channel archive**: caller must be a workspace admin (or the channel creator).
 - **Channel `member-add`** is idempotent. Rejects archived channels, non-channel types (DMs, spaces), and non-workspace users with 400/404 — no opaque 500s.
-- **Channel `member-remove`** is a soft-delete (`removed_at` tombstone). Re-addable later; history preserved.
+- **Channel `member-remove`** is a soft-delete (`removed_at` tombstone). Re-addable later; history preserved. Immediately after `channels create`, the local `channel_members` row may not have replicated yet — the CLI transparently falls back to REST for that brief window.
 - **Workspace `member-add`** is idempotent — rejoins removed members (clears `removed_at`), promotes `collaborator` → `member`, no-op if already a full member. Auto-joins public channels in the same transaction.
 - **Workspace `member-remove`** is a soft-delete. Forbidden against the workspace's `primary_owner` — transfer ownership through the desktop UI first.
 - **Self-removal is blocked** server-side; the "leave workspace" flow has a different audit trail (no `removed_by`). Use the desktop UI.
