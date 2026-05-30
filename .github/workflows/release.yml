@@ -1,0 +1,46 @@
+name: Release
+
+# Publishes @ano-chat/skills to npm on a `v*` tag push. Mirrors
+# ano-cli's release.yml (the pattern that keeps npm from lagging the
+# repo — ano-skills previously relied on a manual `npm publish` that
+# was forgotten for 0.20.0 + 0.21.0, leaving npm stuck at 0.19.0).
+#
+# Flow: bump version on main -> tag vX.Y.Z -> this publishes that exact
+# version. The tag must match package.json or the job fails (no silent
+# version drift).
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # for npm provenance
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      # Guard: the tag (vX.Y.Z) must equal package.json's version. Catches
+      # "tagged but forgot to bump" and "bumped but tagged the wrong number".
+      - name: Verify tag matches package.json version
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG="$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::Tag v$TAG does not match package.json version $PKG"
+            exit 1
+          fi
+          echo "✓ publishing @ano-chat/skills@$PKG"
+
+      # No build step — the package ships source skills + .claude-plugin
+      # verbatim (package.json `files`). `npm publish` runs in the package
+      # root; --access public because it's a scoped (@ano-chat) package.
+      - run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
