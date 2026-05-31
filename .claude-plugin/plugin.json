@@ -1,6 +1,6 @@
 {
   "name": "ano-skills",
-  "version": "0.21.2",
+  "version": "0.23.0",
   "description": "Claude Code skills for Ano — drive the `ano` CLI across 8 focused domain skills (core auth/config, messages, channels, coworkers, notifications, tables, automations, realtime bridge) plus an ano-payloads skill for parsing `<ano_payload>` blocks. Each skill is self-contained and loads only when its triggers match.",
   "author": {
     "name": "Ano",

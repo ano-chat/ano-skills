@@ -41,7 +41,7 @@ argument-hint: "[command] [args...]"
 ## Essentials
 
 - Output: `--agent` for raw JSON, `--json` for envelope. Never parse styled TTY.
-- IDs are UUIDs — never fabricate. One-shot name resolution via `--channel-name` and `--to` is preferred over list-then-act.
+- IDs are UUIDs — never fabricate. One-shot name resolution via `--channel-name`/`--to` — and now `messages read <name>` (CLI v2.30.0+) — is preferred over list-then-act.
 - Exit codes: 0 OK · 1 USAGE · 2 NOT_FOUND · 3 AUTH · 4 FORBIDDEN · 5 RATE_LIMIT · 6 NETWORK · 7 API.
 - On exit 3 (AUTH), orchestrate the triggered-auth flow inline (not in scope here — see CLI docs).
 - 60 req/min sliding window; CLI auto-retries 429.
@@ -60,9 +60,10 @@ Want to send something?
 └── DM multiple people   → ano dm send "text" --to Alice --to Bob --to Carol --agent     ← group DM
 
 Want to find something?
-├── Know the channel?  → ano messages read --channel <id> --limit 20 --agent
-├── Need to search?    → ano messages search "query" --limit 5 --agent
-└── Have a URL?        → ano show <url> --agent
+├── Channel by name?  → ano messages read general --limit 20 --agent              ← preferred (CLI v2.30.0+, no list-first)
+├── Channel by id?    → ano messages read --channel <id> --limit 20 --agent       ← when ID known (e.g. from <ano_payload>)
+├── Need to search?   → ano messages search "query" --limit 5 --agent
+└── Have a URL?       → ano show <url> --agent
 ```
 
 ## Quick reference
@@ -83,7 +84,8 @@ Want to find something?
 | Screenshot-only (no caption) | `ano messages send "" --channel-name design --file ./shot.png --agent`                                  |
 | Multiple files               | `ano messages send "logs" -c <id> --file ./out.txt --file ./err.txt --agent`                            |
 | DM with file                 | `ano dm send "fyi" --to "Alice" --file ./report.pdf --agent`                                            |
-| Read messages                | `ano messages read --channel <id> --limit 10 --agent`                                                   |
+| Read channel (by name)       | `ano messages read general --limit 10 --agent` (CLI v2.30.0+)                                           |
+| Read channel (by ID)         | `ano messages read --channel <id> --limit 10 --agent`                                                   |
 | Search                       | `ano messages search "query" --limit 5 --agent`                                                         |
 | Show URL content             | `ano show <url> --agent`                                                                                |
 
@@ -99,10 +101,10 @@ ano messages send "Here's my analysis..." --channel-name engineering --agent
 ### Read a channel and reply
 
 ```bash
-channels=$(ano channels list --agent)
-# Parse to find CHANNEL_ID for "general"
-messages=$(ano messages read --channel "$CHANNEL_ID" --limit 20 --agent)
-ano messages send "Here's my analysis..." --channel "$CHANNEL_ID" --agent
+# Know the channel name? Read + reply directly — no channels-list first (CLI v2.30.0+).
+# The CLI resolves the name via the warm Zero replica (cached per process).
+messages=$(ano messages read general --limit 20 --agent)
+ano messages send "Here's my analysis..." --channel-name general --agent
 ```
 
 ### Search, then reply in thread
@@ -200,6 +202,7 @@ The basic-text `messages send` path — `--channel <id>` with no `--thread`, `--
 ## Edge cases
 
 - Channel by name with `--channel-name <name>` is 1 round trip and atomic at the server. If the channel doesn't exist, returns exit 2 (NOT_FOUND); do NOT fall back to creating it silently.
+- `messages read <name>` (CLI v2.30.0+) accepts a channel name (positional, `--channel-name <name>`, or `--channel <id-or-name>`) and resolves it via the warm replica. A name matching channels in multiple workspaces a key can see returns exit 1 (USAGE) — disambiguate with `--workspace <id>` or `--channel <id>`. Unknown name → exit 2 (NOT_FOUND).
 - Threads: pass the parent message id as `--thread <id>`. Replying to a thread that doesn't exist returns exit 2.
 - @mention: `--mention <user_id>` injects an at-mention into the rendered message. Use the user's UUID, not their display name.
 - DM `--email` is 1:1-only. For group DMs, only `--to` (name or id list) works.
