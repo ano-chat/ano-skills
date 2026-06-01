@@ -35,7 +35,7 @@ Optimize for: super fast, always ahead, fewest turns, zero wrong-target writes. 
 
 1. **Warm the daemon once per session.** `ano daemon start` (idempotent; clears a tripped breaker). Reads then serve from the local Zero replica at ~40–80 ms; without it every call cold-spawns (~379 ms) AND round-trips to the region (~500 ms transatlantic to prod). This is the single biggest speed lever — never skip it.
 2. **Orient in ONE call.** `ano daemon status --json` returns the whole context bundle in a single round-trip: CLI version + staleness, profile + endpoint + region, auth, daemon + cache + **Zero replica state/drift**, API reachability, workspace, identity, channel count. Use it as call #1 instead of scattering `auth status` + `channels list` + identity lookups. There is **no `ano context` command** — don't reach for one.
-3. **Address by name, scoped by workspace, in one shot.** `ano messages send --channel-name <name> --workspace <id> "msg" --agent` resolves + inserts server-side — no list-then-send. Reads resolve by name too: `ano messages read <name> --workspace <id> --agent` (CLI v2.30.0+) — no list-then-read. **Channel and user names are NOT unique:** one key can see multiple workspaces (prod has two `#general`, two `#random`). ALWAYS pass `--workspace <id>` for any name-addressed op outside your profile's default workspace, and confirm a channel's workspace before a write. An unscoped `--channel-name` is a wrong-tenant footgun.
+3. **Address by name, scoped by workspace, in one shot.** `ano messages send --channel-name <name> --workspace <id> "msg" --agent` resolves + inserts server-side — no list-then-send. Reads resolve by name too: `ano messages read <name> --workspace <id> --agent` (CLI v2.30.0+) and `ano dm read "Name" --workspace <id> --agent` — no list-then-read. **Channel and user names are NOT unique:** one key can see multiple workspaces (prod has two `#general`, two `#random`). ALWAYS pass `--workspace <id>` for any name-addressed op outside your profile's default workspace, and confirm a channel's workspace before a write. An unscoped `--channel-name` is a wrong-tenant footgun.
 
 Replica health tell: `daemon status` showing `Zero: connected · no drift` with `Cache: 0 hits/0 misses` after a read means it came from the replica, not REST. Schema drift → silent REST fallback (~150 ms) is the "slow right after a deploy" symptom — fix by updating the CLI (drift = the vendored schema lags the deployed server).
 
@@ -43,7 +43,7 @@ Replica health tell: `daemon status` showing `Zero: connected · no drift` with 
 
 1. **Always use `--agent` or `--json` output.** Never parse styled TTY output. `--agent` for raw JSON, `--json` for envelope with breadcrumbs.
 2. **Never fabricate IDs.** Channel/user/message IDs are UUIDs. Get them from `ano channels list --agent` or `ano users list --agent` first — and remember names are NOT unique across the workspaces a key can see, so filter the list by the workspace you mean.
-3. **One-shot name resolution, ALWAYS workspace-scoped.** For sends, use `--channel-name <name> --workspace <id>` (or `--to "Name" --workspace <id>` for DMs) — the server resolves and inserts in one call; reads take a name directly too (`ano messages read <name>`, CLI v2.30.0+). The `--workspace` scope is mandatory whenever you're not in your profile's default workspace, because names collide (two `#general` in prod). Don't list-then-act unless you need other metadata.
+3. **One-shot name resolution, ALWAYS workspace-scoped.** For sends, use `--channel-name <name> --workspace <id>` (or `--to "Name" --workspace <id>` for DMs) — the server resolves and inserts in one call; reads take a name directly too (`ano messages read <name>`, CLI v2.30.0+, and `ano dm read "Name"`). The `--workspace` scope is mandatory whenever you're not in your profile's default workspace, because names collide (two `#general` in prod). Don't list-then-act unless you need other metadata.
 4. **Respect rate limits.** 60 req/min, sliding window. Exit code 5 = rate limited; wait 10+ s before retry.
 5. **Check exit codes.** Non-zero = failure. Parse the error envelope.
 6. **Never expose API keys.** Don't log or include `ano_cwk_*` / `ano_usr_*` in output.
@@ -177,7 +177,7 @@ Force a profile: `ano --profile default ...` or `ANO_PROFILE=default ano ...`. A
 
 Background daemon holds Node warm + TLS pool + in-process cache. Subsequent calls land at ~40 ms. Circuit breaker auto-disables a wedged daemon for 10 min.
 
-- Cacheable reads (5 s TTL): `list_workspaces`, `list_channels`, `list_users`, `list_tables`, `get_table`. Writes invalidate the origin's cache.
+- Cacheable reads (5 s TTL): `list_workspaces`, `list_channels`, `list_dms`, `resolve_dm`, `list_users`, `list_tables`, `get_table`. Writes invalidate the origin's cache.
 - `ano daemon status` shows live state (cache + breaker fields in v2.20.0+); `ano daemon status --json` is the **one-call context bundle** (see Fast path #2) — cli/profile/auth/daemon/cache/zero/api/workspace/identity in a single round-trip.
 - `breaker: TRIPPED` → daemon bypassed; run `ano daemon start` to clear AND respawn.
 - `ANO_DEBUG_CACHE=1 ano <cmd>` logs MISS/HIT/WRITE lines on stderr.

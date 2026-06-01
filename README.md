@@ -110,6 +110,7 @@ Then ask Claude Code to work with Ano, for example:
 ```text
 Read the latest messages in #general.
 Send a DM to Jane.
+Read your DM with Jane.
 Search Ano for the staging error thread.
 ```
 

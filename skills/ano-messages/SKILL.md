@@ -16,6 +16,9 @@ triggers:
   - find messages
   - send dm
   - send direct message
+  - read dm
+  - read direct message
+  - list dms
   - send group dm
   - dm multiple people
   - dm a group
@@ -41,7 +44,7 @@ argument-hint: "[command] [args...]"
 ## Essentials
 
 - Output: `--agent` for raw JSON, `--json` for envelope. Never parse styled TTY.
-- IDs are UUIDs — never fabricate. One-shot name resolution via `--channel-name`/`--to` — and now `messages read <name>` (CLI v2.30.0+) — is preferred over list-then-act.
+- IDs are UUIDs — never fabricate. One-shot name resolution via `--channel-name`/`--to`, `messages read <name>` (CLI v2.30.0+), and `dm read "Name"` is preferred over list-then-act.
 - Exit codes: 0 OK · 1 USAGE · 2 NOT_FOUND · 3 AUTH · 4 FORBIDDEN · 5 RATE_LIMIT · 6 NETWORK · 7 API.
 - On exit 3 (AUTH), orchestrate the triggered-auth flow inline (not in scope here — see CLI docs).
 - 60 req/min sliding window; CLI auto-retries 429.
@@ -62,6 +65,8 @@ Want to send something?
 Want to find something?
 ├── Channel by name?  → ano messages read general --limit 20 --agent              ← preferred (CLI v2.30.0+, no list-first)
 ├── Channel by id?    → ano messages read --channel <id> --limit 20 --agent       ← when ID known (e.g. from <ano_payload>)
+├── DM by name?       → ano dm read "Name" --limit 20 --agent                     ← read-only, no create-on-miss
+├── DM inbox?         → ano dm list --limit 50 --agent
 ├── Need to search?   → ano messages search "query" --limit 5 --agent
 └── Have a URL?       → ano show <url> --agent
 ```
@@ -86,6 +91,9 @@ Want to find something?
 | DM with file                 | `ano dm send "fyi" --to "Alice" --file ./report.pdf --agent`                                            |
 | Read channel (by name)       | `ano messages read general --limit 10 --agent` (CLI v2.30.0+)                                           |
 | Read channel (by ID)         | `ano messages read --channel <id> --limit 10 --agent`                                                   |
+| List DM conversations        | `ano dm list --limit 50 --agent`                                                                        |
+| Read DM (by name)            | `ano dm read "Name" --limit 10 --agent`                                                                 |
+| Read group DM                | `ano dm read --to "Alice" --to "Bob" --limit 10 --agent`                                                |
 | Search                       | `ano messages search "query" --limit 5 --agent`                                                         |
 | Show URL content             | `ano show <url> --agent`                                                                                |
 
@@ -115,11 +123,10 @@ results=$(ano messages search "deployment issue" --agent)
 ano messages send "Fix applied" --channel "$CHANNEL_ID" --thread "$MSG_ID" --agent
 ```
 
-### DM with user lookup
+### Read and send a DM by name
 
 ```bash
-users=$(ano users list --agent)
-# Find USER_ID for "Jane"
+ano dm read "Jane" --limit 25 --agent
 ano dm send "Can you review PR #42?" --to "Jane" --agent
 ```
 
@@ -134,6 +141,13 @@ ano dm send "kick-off at 09:00" --to "Alice" --user-id usr_bob --agent
 ```
 
 ≥3 distinct members (you + ≥2 others). Single recipient → 1:1 DM. `--email` stays 1:1-only. Result JSON: `"channel_type": "group_dm"` and `"recipients": [...]`.
+
+Read the same group conversation with the same recipient forms. This is read-only: if that exact DM does not exist, it exits 2 and never creates a channel.
+
+```bash
+ano dm read --to "Alice" --to "Bob" --limit 25 --agent
+ano dm list --limit 50 --agent
+```
 
 ### Share a local file (CLI v2.18.0+)
 
@@ -203,6 +217,8 @@ The basic-text `messages send` path — `--channel <id>` with no `--thread`, `--
 
 - Channel by name with `--channel-name <name>` is 1 round trip and atomic at the server. If the channel doesn't exist, returns exit 2 (NOT_FOUND); do NOT fall back to creating it silently.
 - `messages read <name>` (CLI v2.30.0+) accepts a channel name (positional, `--channel-name <name>`, or `--channel <id-or-name>`) and resolves it via the warm replica. A name matching channels in multiple workspaces a key can see returns exit 1 (USAGE) — disambiguate with `--workspace <id>` or `--channel <id>`. Unknown name → exit 2 (NOT_FOUND).
+- `dm read "Name"` uses the same recipient forms as `dm send` (`--to`, `--email`, `--user-id`, repeated/comma-separated group forms) but is read-only. Unknown or non-existent conversations exit 2 (NOT_FOUND); do NOT call `dm send` as a fallback.
+- `dm list` returns only DM/group-DM conversations. `channels list` intentionally lists regular channels, not DMs.
 - Threads: pass the parent message id as `--thread <id>`. Replying to a thread that doesn't exist returns exit 2.
 - @mention: `--mention <user_id>` injects an at-mention into the rendered message. Use the user's UUID, not their display name.
 - DM `--email` is 1:1-only. For group DMs, only `--to` (name or id list) works.
