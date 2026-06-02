@@ -2,7 +2,7 @@
   "mcpServers": {
     "ano": {
       "type": "http",
-      "url": "https://api-staging.ano.dev/mcp"
+      "url": "${ANO_MCP_URL:-https://api-us.ano.dev/mcp}"
     }
   }
 }

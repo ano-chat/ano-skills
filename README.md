@@ -60,8 +60,10 @@ changed files — no prompting, no accept clicks. Works wherever Claude Code run
 - **Per repo:** add/remove the `## Ano Sync` block (or `ANO_SYNC_CHANNEL`).
 - **Globally:** `claude plugin disable ano-skills` / `claude plugin enable ano-skills`.
 
-> The bundled MCP points at staging (`api-staging.ano.dev`) during dogfood;
-> switch to `api-us.ano.dev` for production.
+> The bundled `ano` MCP points at **production by default**
+> (`api-us.ano.dev`). To target another environment (e.g. staging for
+> dogfooding), set `ANO_MCP_URL` before launching Claude Code:
+> `export ANO_MCP_URL=https://api-staging.ano.dev/mcp`.
 
 ## What Is Included
 
