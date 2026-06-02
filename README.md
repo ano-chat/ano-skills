@@ -10,6 +10,59 @@ Ano is team chat with Claude Code and agents built in. These skills teach Claude
 claude plugin install @ano-chat/skills
 ```
 
+## Ano Sync — keep a channel current as you work (automatic)
+
+`ano-sync` turns a teammate's Ano channel into a live "control tower" for your
+work. The plugin bundles everything, so it's **one install + a one-time
+allow-list** — no manual MCP config, no manual hooks:
+
+- the **`ano` MCP server** (`ano_send_sync_event` + `ano_get_channel_context`),
+- a **`SessionStart` hook** that auto-reads the channel's state at task start,
+- a **`Stop` hook** that, when a turn changed files, has the agent post one rich
+  Sync Event before it stops,
+- the **`ano-sync` skill** (behavior + anti-spam).
+
+It is **opt-in per repo** and silent everywhere else.
+
+### One-time: allow the tools (so there's never an "Allow?" prompt)
+
+Plugins can't grant tool permissions (by design), so add this once to
+`~/.claude/settings.json` (merge into any existing `permissions`):
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "mcp__ano__ano_send_sync_event",
+      "mcp__ano__ano_get_channel_context"
+    ]
+  }
+}
+```
+
+### Per repo: turn it on
+
+Add to the repo's `CLAUDE.md` (this is the on switch — remove it to turn off):
+
+```md
+## Ano Sync
+
+- channel: #ano-sync-demo <!-- a name is fine — the agent resolves it to the id -->
+```
+
+(or set `ANO_SYNC_CHANNEL` to a name or id in your env.) Then just work: the agent
+auto-reads the channel at task start and auto-posts a Sync Event when a turn
+changed files — no prompting, no accept clicks. Works wherever Claude Code runs
+(iTerm2, Cursor's terminal, …).
+
+### On / off
+
+- **Per repo:** add/remove the `## Ano Sync` block (or `ANO_SYNC_CHANNEL`).
+- **Globally:** `claude plugin disable ano-skills` / `claude plugin enable ano-skills`.
+
+> The bundled MCP points at staging (`api-staging.ano.dev`) during dogfood;
+> switch to `api-us.ano.dev` for production.
+
 ## What Is Included
 
 Nine focused, self-contained skills. Each loads only when its trigger phrases match — so a "send a message" prompt no longer pulls the full CLI surface into context.

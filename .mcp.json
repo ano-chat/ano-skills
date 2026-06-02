@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "ano": {
+      "type": "http",
+      "url": "https://api-staging.ano.dev/mcp"
+    }
+  }
+}
