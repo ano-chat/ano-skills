@@ -28,6 +28,14 @@
             "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/ano-sync-stop.sh"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/ano-task-stop.sh"
+          }
+        ]
       }
     ]
   }

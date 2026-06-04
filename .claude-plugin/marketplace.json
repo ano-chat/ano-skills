@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "Claude Code skills for the Ano CLI and desktop app — now split into 9 focused domain skills for faster trigger-scoped loading",
-    "version": "0.25.0"
+    "version": "0.25.1"
   },
   "plugins": [
     {
       "name": "ano-skills",
       "source": "./",
       "description": "Skills for interacting with Ano + Ano Sync. Self-contained CLI skills (core/messages/channels/coworkers/notifications/tables/automations/realtime/payloads) PLUS an ano-sync skill, the bundled `ano` MCP server, and a Stop hook so your agent auto-reads channel context and auto-posts Sync Events as you work — one install, no manual hook/MCP setup.",
-      "version": "0.25.0",
+      "version": "0.25.1",
       "author": {
         "name": "Ano"
       },
