@@ -21,6 +21,9 @@ triggers:
   - install ano cli
   - ano dev smoke
   - ano daemon
+  - ano task
+  - background task
+  - in the background
 invocable: true
 argument-hint: "[command] [args...]"
 ---
@@ -197,6 +200,23 @@ ano setup openclaw              # Setup OpenClaw integration
 ```
 
 `dev smoke` envelope: `{ ok, steps[], total_ms, daemon, endpoint }`. Pair with `ano doctor --agent` if a step fails — doctor explains _why_, smoke measures _whether_.
+
+## Background tasks — `ano task` (fire-and-forget, on YOUR subscription)
+
+Requires CLI v2.31.1+. Dispatch a one-off agent task that runs in the **background on the local Claude subscription** (via `claude -p` — NOT metered API) and returns **immediately**, so you don't make the user sit through a stream. The result comes back to this shell automatically at your next turn-end (the `ano-task-stop` hook from `@ano-chat/skills` — no polling), and optionally posts to a channel.
+
+```bash
+ano task "summarize the last 50 msgs in #standup into 3 bullets and post them" --to "#standup"
+# → ✓ queued — t_1a2b3c4d.  Returns instantly; keep working.
+ano task list                  # recent tasks + status (queued|running|done|failed)
+ano task result <id> --agent   # fetch one task's result / error
+```
+
+**When to reach for it:** the user wants something done but not to watch it happen ("summarize X and post it", "draft Y in the background", any independent longer-running step). Dispatch it, say "on it — I'll surface the result when it's done", and carry on. **Don't** use it for work whose result the user needs _in this reply_ — just do that inline.
+
+**How the result returns:** written to `~/.cache/ano/tasks/<id>.json`; the Stop hook relays it to you once, at your next turn-end. With `--to <channel>` the runner also posts the result to that channel **by name in your default workspace** (names aren't unique across workspaces — for a non-default workspace, post it yourself with `ano messages send --workspace <id>`).
+
+**Caveats:** needs the local `claude` CLI on PATH (it spends your subscription, so it only runs where Claude Code runs); the result appears on your _next_ turn-end, and a global hook can surface it in a different session than the one that dispatched it.
 
 ## Rate Limiting
 

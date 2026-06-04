@@ -1,6 +1,6 @@
 {
   "name": "ano-skills",
-  "version": "0.25.1",
+  "version": "0.25.2",
   "description": "Claude Code skills for Ano — drive the `ano` CLI across focused domain skills (core, messages, channels, coworkers, notifications, tables, automations, realtime, payloads). Now also bundles the `ano` MCP server + an Ano Sync skill and Stop hook so your agent auto-reads channel context and auto-posts Sync Events as you work — install once, nothing else to wire up.",
   "author": {
     "name": "Ano",
